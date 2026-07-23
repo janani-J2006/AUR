@@ -6,7 +6,7 @@ Some assignment features (published dataset persistence and DB audit table)
 are implemented with JSON/file fallbacks because the current models do not
 contain Dataset/Audit tables.
 """
-
+from database.models import User, University, RankingScore, UniversityMetric, Blog
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -746,4 +746,18 @@ async def events_dashboard(
         "shortlisted": shortlisted,
         "winners": winners,
         "rejected": rejected,
+    }
+@router.get("/stats")
+async def get_admin_stats(
+    current_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    total_users = await db.scalar(select(func.count()).select_from(User))
+    total_institutions = await db.scalar(select(func.count()).select_from(University))
+    total_blogs = await db.scalar(select(func.count()).select_from(Blog))
+
+    return {
+        "total_users": total_users,
+        "total_institutions": total_institutions,
+        "total_blogs": total_blogs,
     }

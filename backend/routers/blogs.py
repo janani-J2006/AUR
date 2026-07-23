@@ -1,3 +1,4 @@
+from auth.middleware import require_admin
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,9 +23,13 @@ def generate_slug(title: str) -> str:
     return slug.strip('-')
 
 @router.post("/", response_model=BlogResponse, status_code=201)
-async def create_blog(blog: BlogCreate, db: AsyncSession = Depends(get_db)):
+async def create_blog(
+    blog: BlogCreate,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(require_admin),
+):
     """
-    Create a new blog post.
+    Create a new blog post. Admin only.
     """
     slug = generate_slug(blog.title)
     
@@ -52,7 +57,7 @@ async def create_blog(blog: BlogCreate, db: AsyncSession = Depends(get_db)):
 @router.get("/", response_model=List[BlogResponse])
 async def read_blogs(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
     """
-    Retrieve all blog posts.
+    Retrieve all blog posts. Public.
     """
     result = await db.scalars(select(Blog).offset(skip).limit(limit))
     return result.all()
@@ -60,7 +65,7 @@ async def read_blogs(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
 @router.get("/{blog_id}", response_model=BlogResponse)
 async def read_blog(blog_id: UUID, db: AsyncSession = Depends(get_db)):
     """
-    Retrieve a specific blog post by its UUID.
+    Retrieve a specific blog post by its UUID. Public.
     """
     blog = await db.get(Blog, blog_id)
     if blog is None:
@@ -68,9 +73,14 @@ async def read_blog(blog_id: UUID, db: AsyncSession = Depends(get_db)):
     return blog
 
 @router.put("/{blog_id}", response_model=BlogResponse)
-async def update_blog(blog_id: UUID, blog_update: BlogUpdate, db: AsyncSession = Depends(get_db)):
+async def update_blog(
+    blog_id: UUID,
+    blog_update: BlogUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(require_admin),
+):
     """
-    Update a specific blog post.
+    Update a specific blog post. Admin only.
     """
     db_blog = await db.get(Blog, blog_id)
     if db_blog is None:
@@ -95,9 +105,13 @@ async def update_blog(blog_id: UUID, blog_update: BlogUpdate, db: AsyncSession =
     return db_blog
 
 @router.delete("/{blog_id}")
-async def delete_blog(blog_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_blog(
+    blog_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(require_admin),
+):
     """
-    Delete a specific blog post.
+    Delete a specific blog post. Admin only.
     """
     db_blog = await db.get(Blog, blog_id)
     if db_blog is None:
